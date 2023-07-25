@@ -72,7 +72,7 @@ END IF;
 
             if not table_data_dict.get(table_name, None):
                 table_data_dict[table_name] = {}
-                
+
             if not table_data_dict[table_name].get(record_id, None):
                 table_data_dict[table_name][record_id] = {}
 
@@ -174,10 +174,10 @@ if __name__ == "__main__":
     ####
 
     file_path = file_name + ".nt"
-    graph_batches = read_large_nt_file(file_path, batch_size*100)
+    graph_batches = read_large_nt_file(file_path, batch_size*300)
 
     for i, graph_batch in enumerate(graph_batches):            
-        write_to_script_file(graph_batch, output_script_path, batch_size, i+1)
+        write_to_script_file(graph_batch, output_script_path, batch_size*300, i+1)
         print(f"Batch {i + 1} processed.")
 
     print(f"SQL script file '{output_script_path}' created.")
