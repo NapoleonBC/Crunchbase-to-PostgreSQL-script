@@ -28,7 +28,7 @@ def read_large_nt_file(file_path, batch_size):
 
 def write_to_script_file(graph, output_script_path, batch_size, index):
     _dir = "script_parts/"+output_script_path+str(index)+ ".sql"
-    os.makedirs(os.path.dirname(_dir), exist_ok=True)
+    os.makedirs(os.path.dirname(_dir), exist_ok=True) 
     with open(_dir, 'w', encoding='utf-8') as script_file:
         # Add a newline after the table creation statement
         script_file.write("\n")
@@ -54,7 +54,6 @@ def write_to_script_file(graph, output_script_path, batch_size, index):
                 create_table_sql = f"CREATE TABLE IF NOT EXISTS {table_name} (id STRING PRIMARY KEY);"
                 script_file.write(create_table_sql)
                 table_name_dict[table_name] = {}
-                table_data_dict[table_name] = {}
 
             if not table_name_dict[table_name].get(field_name, None):
                 field_type = 'TEXT'
@@ -71,36 +70,54 @@ END IF;
                 script_file.write(alter_table_add_column_sql)
                 table_name_dict[table_name][field_name] = True
 
+            if not table_data_dict.get(table_name, None):
+                table_data_dict[table_name] = {}
+                
             if not table_data_dict[table_name].get(record_id, None):
                 table_data_dict[table_name][record_id] = {}
-                table_data_dict[table_name][record_id]["field_name"] = []
-                table_data_dict[table_name][record_id]["value"] = []
 
             # Add the processed data to the 'data' list (customize this based on your data structure)
-            table_data_dict[table_name][record_id]["field_name"].append(str(field_name))
+            table_data_dict[table_name][record_id][field_name] = "'"+str(value)+"'"
             if 'trust_code' in field_name:
                 pass
             elif field_name == 'created_at' or field_name == 'updated_at' or '_on' in field_name:
                 field_type = 'TIMESTAMP'
                 value = convert_to_valid_date_format(value)
-            table_data_dict[table_name][record_id]["value"].append("'"+str(value)+"'")
+                table_data_dict[table_name][record_id][field_name] = f"TO_TIMESTAMP('{value}', 'YYYY-MM-DD')"
+            
             cnt += 1
 
             if cnt >= batch_size:
                 # Generate SQL insert statements for the current batch
                 for key, val in table_data_dict.items():
+                    table_name = key
+
                     for _key, _val in val.items():
-                        field_names = ', '.join(_ for _ in table_data_dict[table_name][record_id]["field_name"])
-                        values = ', '.join(_ for _ in table_data_dict[table_name][record_id]["value"])
-                        insert_sql = f"INSERT INTO {key} (id, {field_names}) VALUES %s;"
-                        values_sql = f"({record_id}, {values})"
+                        record_id = _key
+                        field_names = ''
+                        update_set_str = ''
+                        values = ''
+                        for __key, __val in _val.items():
+                            field_names += f"{__key}, "
+                            values += f"{__val}, "
+                            update_set_str += f"{__key} = EXCLUDED.{__key}, "
+                        
+                        field_names = field_names[:-2]
+                        values = values[:-2]
+                        update_set_str = update_set_str[:-2]
 
-                    sql_statement = insert_sql % values_sql
+                        insert_sql = f"""INSERT INTO {table_name} (id, {field_names}) VALUES %s;
+    ON CONFLICT (id) DO
+    UPDATE SET {update_set_str};
+    """
+                        values_sql = f"('{record_id}', {values})"
 
-                    # Write the SQL insert statements to the script file for the current batch
-                    script_file.write(sql_statement)
-                    script_file.write("\n")
+                        sql_statement = insert_sql % values_sql
 
+                        # Write the SQL insert statements to the script file for the current batch
+                        script_file.write(sql_statement)
+                        script_file.write("\n")
+                        
                 # Clear the 'data' list for the next batch
                 table_data_dict.clear()
 
@@ -108,17 +125,33 @@ END IF;
         if table_data_dict:
             # Generate SQL insert statements for the current batch
             for key, val in table_data_dict.items():
+                table_name = key
+
                 for _key, _val in val.items():
-                    field_names = ', '.join(_ for _ in table_data_dict[table_name][record_id]["field_name"])
-                    values = ', '.join(_ for _ in table_data_dict[table_name][record_id]["value"])
-                    insert_sql = f"INSERT INTO {key} (id, {field_names}) VALUES %s;"
+                    record_id = _key
+                    field_names = ''
+                    update_set_str = ''
+                    values = ''
+                    for __key, __val in _val.items():
+                        field_names += f"{__key}, "
+                        values += f"{__val}, "
+                        update_set_str += f"{__key} = EXCLUDED.{__key}, "
+                    
+                    field_names = field_names[:-2]
+                    values = values[:-2]
+                    update_set_str = update_set_str[:-2]
+
+                    insert_sql = f"""INSERT INTO {table_name} (id, {field_names}) VALUES %s;
+ON CONFLICT (id) DO
+UPDATE SET {update_set_str};
+"""
                     values_sql = f"('{record_id}', {values})"
 
-                sql_statement = insert_sql % values_sql
+                    sql_statement = insert_sql % values_sql
 
-                # Write the SQL insert statements to the script file for the current batch
-                script_file.write(sql_statement)
-                script_file.write("\n")
+                    # Write the SQL insert statements to the script file for the current batch
+                    script_file.write(sql_statement)
+                    script_file.write("\n")
 
 
 if __name__ == "__main__":
@@ -134,7 +167,7 @@ if __name__ == "__main__":
 
 
     # file_name = "cb-complete_sorted"
-    file_name = "temp"
+    file_name = "cb-complete_sorted"
     batch_size = 5000
     output_script_path = file_name
 

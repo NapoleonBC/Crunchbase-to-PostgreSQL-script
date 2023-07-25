@@ -5,3 +5,4 @@
 *.sql
 *.exe
 script_parts
+__pycache__/
