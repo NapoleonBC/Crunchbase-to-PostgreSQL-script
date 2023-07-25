@@ -11,15 +11,18 @@ def read_large_nt_file(file_path, batch_size):
     graph = Graph()
     with open(file_path, "rb") as file:
         for i, line in enumerate(tqdm(file, desc='Processing', unit='lines')):
-            # Extract url from encoded text
-            # print (line)
-            line = line.decode('utf-8')
-            line = extract_original_url(line)
-            line = line.encode('utf-8')
-            graph.parse(data=line, format="nt")
-            if i > 0 and i % batch_size == 0:
-                yield graph
-                graph = Graph()
+            try:
+                # Extract url from encoded text
+                # print (line)
+                line = line.decode('utf-8')
+                line = extract_original_url(line)
+                line = line.encode('utf-8')
+                graph.parse(data=line, format="nt")
+                if i > 0 and i % batch_size == 0:
+                    yield graph
+                    graph = Graph()
+            except Exception as e:
+                print (e.args[0])
 
     # Return the remaining triples if the total number is not a multiple of batch_size
     if graph:
