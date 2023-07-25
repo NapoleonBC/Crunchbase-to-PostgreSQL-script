@@ -1,0 +1,4 @@
+rdflib
+tqdm
+psycopg2
+datetime

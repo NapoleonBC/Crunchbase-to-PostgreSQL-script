@@ -1,0 +1,7 @@
+*.log
+*.nt
+*.rar
+*.gz
+*.sql
+*.exe
+script_parts
