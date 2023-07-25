@@ -12,7 +12,6 @@ def convert_to_valid_date_format(s):
         formatted_date = date_obj.strftime("%Y-%m-%d")
         return formatted_date
     except Exception as e:
-        print (e.args[0])
         # If the input is not a valid timestamp, return the input as it is (assuming it's already in valid format)
         return s
 
