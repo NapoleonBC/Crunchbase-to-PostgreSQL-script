@@ -2,9 +2,17 @@ import os
 from rdflib import Graph
 from tqdm import tqdm
 import psycopg2
-from utils import extract_field_name, extract_original_url, extract_table_name_and_id, convert_to_valid_date_format
+from utils import extract_field_name, extract_original_url, extract_table_name_and_id, convert_to_valid_date_format, name_validator
+import json
+from datetime import datetime
 
 table_name_dict = {}
+
+def table_structure_print():
+    print (table_name_dict)
+    with open ("table_structure_"+datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S-%f")+".json", 'w') as file:
+        file.write(json.JSONEncoder().encode(table_name_dict))
+
 # Step 1: Read the crunchbase data from the .nt file using streaming parser
 def read_large_nt_file(file_path, batch_size):
     print("Initializing the graph")
@@ -49,12 +57,14 @@ def write_to_script_file(graph, output_script_path, batch_size, index):
             table_name, record_id = extract_table_name_and_id(subject)
             field_name = extract_field_name(predicate)
             value = extract_field_name(obj)
+            table_name = name_validator(table_name)
+            field_name = name_validator(field_name)
             if not table_name or not record_id or not field_name or not value:
                 continue
 
             # Write the table creation statement to the script file
             if not table_name_dict.get(table_name, None):
-                create_table_sql = f"CREATE TABLE IF NOT EXISTS {table_name} (id STRING PRIMARY KEY);"
+                create_table_sql = f"CREATE TABLE IF NOT EXISTS {table_name} (id VARCHAR(255) PRIMARY KEY);"
                 script_file.write(create_table_sql)
                 table_name_dict[table_name] = {}
 
@@ -185,3 +195,4 @@ if __name__ == "__main__":
 
     print(f"SQL script file '{output_script_path}' created.")
 
+    table_structure_print()

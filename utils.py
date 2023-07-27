@@ -2,6 +2,11 @@ import urllib.parse
 import re
 from datetime import datetime
 
+def name_validator(name):
+    # Replace hyphens with underscores in the name
+    name = name.replace('-', '_')
+    return name
+
 def convert_to_valid_date_format(s):
     try:
         # Attempt to parse the input as a Unix timestamp

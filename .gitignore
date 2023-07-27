@@ -4,5 +4,6 @@
 *.gz
 *.sql
 *.exe
+*.json
 script_parts
 __pycache__/
