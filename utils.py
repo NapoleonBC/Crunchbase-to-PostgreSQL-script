@@ -83,7 +83,7 @@ def extract_table_name_and_id(url):
                 return first_word, second_word
     except Exception as e:
         print (e.args[0])
-    print("Invalid URL.")
+    # print("Invalid URL.")
     return None, None
 
 def extract_field_name(url):

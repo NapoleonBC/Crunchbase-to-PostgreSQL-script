@@ -42,6 +42,24 @@ def write_to_script_file(graph, output_script_path, batch_size, index):
     os.makedirs(os.path.dirname(_dir), exist_ok=True) 
     with open(_dir, 'w', encoding='utf-8') as script_file:
         # Add a newline after the table creation statement
+        # Function to check if the column already exists in the table
+        function_str = """
+CREATE OR REPLACE FUNCTION my_column_exists(input_table_name name, input_column_name name)
+RETURNS boolean AS $$
+DECLARE
+    col_exists boolean;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE input_table_name = $1 AND input_column_name = $2
+    ) INTO col_exists;
+
+    RETURN col_exists;
+END;
+$$ LANGUAGE plpgsql;
+"""
+        # script_file.write(function_str)
         script_file.write("\n")
         
     with open(_dir, "a", encoding='utf-8') as script_file:
@@ -57,15 +75,15 @@ def write_to_script_file(graph, output_script_path, batch_size, index):
             table_name, record_id = extract_table_name_and_id(subject)
             field_name = extract_field_name(predicate)
             value = extract_field_name(obj)
-            table_name = name_validator(table_name)
-            field_name = name_validator(field_name)
             if not table_name or not record_id or not field_name or not value:
                 continue
+            table_name = name_validator(table_name)
+            field_name = name_validator(field_name)
 
             # Write the table creation statement to the script file
             if not table_name_dict.get(table_name, None):
                 create_table_sql = f"CREATE TABLE IF NOT EXISTS {table_name} (id VARCHAR(255) PRIMARY KEY);"
-                script_file.write(create_table_sql)
+                # script_file.write(create_table_sql)
                 table_name_dict[table_name] = {}
 
             if not table_name_dict[table_name].get(field_name, None):
@@ -76,11 +94,14 @@ def write_to_script_file(graph, output_script_path, batch_size, index):
                     field_type = 'TIMESTAMP'
 
                 alter_table_add_column_sql = f"""
-IF NOT column_exists('{table_name}', '{field_name}') THEN
+DO $$
+BEGIN
+IF NOT my_column_exists('{table_name}', '{field_name}') THEN
     EXECUTE 'ALTER TABLE {table_name} ADD COLUMN {field_name} {field_type};';
 END IF;
+END $$;
 """
-                script_file.write(alter_table_add_column_sql)
+                # script_file.write(alter_table_add_column_sql)
                 table_name_dict[table_name][field_name] = True
 
             if not table_data_dict.get(table_name, None):
@@ -110,20 +131,25 @@ END IF;
                         field_names = ''
                         update_set_str = ''
                         values = ''
+                        is_uuid = False
                         for __key, __val in _val.items():
                             field_names += f"{__key}, "
                             values += f"{__val}, "
                             update_set_str += f"{__key} = EXCLUDED.{__key}, "
-                        
+                            if __key == 'uuid':
+                                is_uuid = True
+                        if not is_uuid:
+                            field_names += "uuid, "
+                            values += f"'{record_id}', "
+                            update_set_str += "uuid = EXCLUDED.uuid, "
                         field_names = field_names[:-2]
                         values = values[:-2]
                         update_set_str = update_set_str[:-2]
 
-                        insert_sql = f"""INSERT INTO {table_name} (id, {field_names}) VALUES %s;
-    ON CONFLICT (id) DO
-    UPDATE SET {update_set_str};
+                        insert_sql = f"""INSERT INTO {table_name} ({field_names}) VALUES %s
+    ON CONFLICT (uuid) DO UPDATE SET {update_set_str};
     """
-                        values_sql = f"('{record_id}', {values})"
+                        values_sql = f"({values})" # f"('{record_id}', {values})"
 
                         sql_statement = insert_sql % values_sql
 
@@ -145,20 +171,25 @@ END IF;
                     field_names = ''
                     update_set_str = ''
                     values = ''
+                    is_uuid = False
                     for __key, __val in _val.items():
                         field_names += f"{__key}, "
                         values += f"{__val}, "
                         update_set_str += f"{__key} = EXCLUDED.{__key}, "
-                    
+                        if __key == 'uuid':
+                            is_uuid = True
+                    if not is_uuid:
+                        field_names += "uuid, "
+                        values += f"'{record_id}', "
+                        update_set_str += "uuid = EXCLUDED.uuid, "
                     field_names = field_names[:-2]
                     values = values[:-2]
                     update_set_str = update_set_str[:-2]
 
-                    insert_sql = f"""INSERT INTO {table_name} (id, {field_names}) VALUES %s;
-ON CONFLICT (id) DO
-UPDATE SET {update_set_str};
+                    insert_sql = f"""INSERT INTO {table_name} ({field_names}) VALUES %s
+ON CONFLICT (uuid) DO UPDATE SET {update_set_str};
 """
-                    values_sql = f"('{record_id}', {values})"
+                    values_sql = f"({values})" # f"('{record_id}', {values})"
 
                     sql_statement = insert_sql % values_sql
 
