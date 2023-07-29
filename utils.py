@@ -5,6 +5,7 @@ from datetime import datetime
 def name_validator(name):
     # Replace hyphens with underscores in the name
     name = name.replace('-', '_')
+    name = name.replace("'", "''")
     return name
 
 def convert_to_valid_date_format(s):
