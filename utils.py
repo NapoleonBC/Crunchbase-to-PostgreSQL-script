@@ -5,6 +5,10 @@ from datetime import datetime
 def name_validator(name):
     # Replace hyphens with underscores in the name
     name = name.replace('-', '_')
+    return name
+
+def value_validator(name):
+    # Replace hyphens with underscores in the name
     name = name.replace("'", "''")
     return name
 

@@ -2,7 +2,7 @@ import os
 from rdflib import Graph
 from tqdm import tqdm
 import psycopg2
-from utils import extract_field_name, extract_original_url, extract_table_name_and_id, convert_to_valid_date_format, name_validator
+from utils import extract_field_name, extract_original_url, extract_table_name_and_id, convert_to_valid_date_format, name_validator, value_validator
 import json
 from datetime import datetime
 
@@ -79,6 +79,7 @@ $$ LANGUAGE plpgsql;
                 continue
             table_name = name_validator(table_name)
             field_name = name_validator(field_name)
+            value = value_validator(value)
 
             # Write the table creation statement to the script file
             if not table_name_dict.get(table_name, None):
