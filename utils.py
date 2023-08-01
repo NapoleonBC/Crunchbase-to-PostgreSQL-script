@@ -10,6 +10,7 @@ def name_validator(name):
 def value_validator(name):
     # Replace hyphens with underscores in the name
     name = name.replace("'", "''")
+    name = name.replace(";", "''")
     return name
 
 def convert_to_valid_date_format(s):
